@@ -913,8 +913,7 @@ select:focus { border-color: var(--accent); }
   gap: 16px;
 }
 
-@media (max-width: 960px) { .savings-grid { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 600px) { .savings-grid { grid-template-columns: 1fr; } }
+/* breakpoints consolidated in the responsive section below */
 
 .savings-card {
   background: #FFFFFF;
@@ -993,4 +992,203 @@ select:focus { border-color: var(--accent); }
   margin-top: 14px;
   padding-top: 12px;
   border-top: 1px solid var(--border);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   RESPONSIVE  —  mobile-first overrides
+   Mobile  : ≤ 599px
+   Tablet  : 600px – 959px
+   Desktop : 960px+  (all base styles above)
+═══════════════════════════════════════════════════════════════ */
+
+/* ── Utility visibility classes ──────────────────────────────── */
+.mobile-only  { display: none !important; }
+.desktop-only { display: block; }
+
+/* ── Sidebar overlay (mobile backdrop) ───────────────────────── */
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 65, 116, 0.45);
+  z-index: 998;
+  backdrop-filter: blur(2px);
+}
+.sidebar-overlay.open { display: block; }
+
+/* ── Hamburger button ─────────────────────────────────────────── */
+.hamburger-btn {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  padding: 8px;
+  color: var(--text2);
+  transition: background 0.15s;
+  min-height: 44px;
+  min-width: 44px;
+  align-items: center;
+}
+.hamburger-btn:hover { background: var(--bg3); }
+.hamburger-btn span {
+  display: block;
+  width: 20px;
+  height: 2px;
+  background: currentColor;
+  border-radius: 2px;
+  transition: transform 0.2s, opacity 0.2s;
+}
+
+/* ── Mobile top bar ───────────────────────────────────────────── */
+.mobile-topbar {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  background: #FFFFFF;
+  border-bottom: 1px solid var(--border);
+  padding: 8px 16px;
+  /* escape the .main padding so it spans full width */
+  margin: -16px -16px 16px;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  box-shadow: 0 1px 4px rgba(10, 65, 116, 0.06);
+}
+.mobile-brand {
+  font-family: var(--font-serif);
+  font-size: 17px;
+  font-weight: 600;
+  color: #0A4174;
+  letter-spacing: -0.3px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.mobile-brand-icon { font-size: 16px; color: #4E8EA2; }
+.mobile-month-input {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 5px 8px;
+  cursor: pointer;
+  max-width: 120px;
+}
+.mobile-month-input::-webkit-calendar-picker-indicator { filter: invert(0.6); }
+
+/* ════════════════════════════════════════
+   TABLET  600px – 959px
+════════════════════════════════════════ */
+@media (max-width: 959px) {
+  .main         { padding: 24px 32px; }
+  .page-header h1 { font-size: 28px; }
+  .two-col      { grid-template-columns: 1fr; }
+  .savings-grid { grid-template-columns: repeat(2, 1fr); }
+  .cards-row {
+    grid-template-columns: 1fr 1fr;
+  }
+  .cards-row .card-balance { grid-column: 1 / -1; }
+}
+
+/* ════════════════════════════════════════
+   MOBILE  ≤ 599px
+════════════════════════════════════════ */
+@media (max-width: 599px) {
+
+  /* Utilities */
+  .mobile-only  { display: block !important; }
+  .desktop-only { display: none !important; }
+
+  /* ── Sidebar: hidden by default, overlay when open ── */
+  .sidebar { display: none; z-index: 999; }
+  .sidebar.mobile-open {
+    display: flex;
+    width: 100%;
+    max-width: 220px;
+    box-shadow: 4px 0 24px rgba(10, 65, 116, 0.18);
+  }
+
+  /* ── Show mobile chrome ── */
+  .hamburger-btn { display: flex; }
+  .mobile-topbar { display: flex; }
+
+  /* ── Main: full-width, compact padding ── */
+  .main { margin-left: 0; padding: 16px 16px; }
+
+  /* ── Page header: stack vertically ── */
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  .page-header h1 { font-size: 24px; }
+
+  /* ── Filter rows: wrap and fill ── */
+  .filter-row { flex-wrap: wrap; width: 100%; }
+  .filter-row .btn-primary,
+  .filter-row .btn-secondary {
+    flex: 1;
+    min-width: 120px;
+    text-align: center;
+    justify-content: center;
+  }
+
+  /* ── Grids: single column ── */
+  .cards-row    { grid-template-columns: 1fr; }
+  .two-col      { grid-template-columns: 1fr; }
+  .savings-grid { grid-template-columns: 1fr; }
+  .cards-row .card-balance { grid-column: auto; }
+
+  /* ── Calendar ── */
+  .cal-summary-row  { flex-direction: column; }
+  .cal-day          { min-height: 54px; padding: 5px; }
+  .cal-day-saldo    { display: none; }
+
+  /* ── Dashboard filters ── */
+  .dashboard-filters { gap: 8px; }
+  .dashboard-filters input[type="date"],
+  .dashboard-filters select { min-height: 40px; flex: 1 1 120px; }
+
+  /* ── Touch targets ≥ 44px ── */
+  .btn-primary   { min-height: 44px; padding: 10px 16px; }
+  .btn-secondary { min-height: 44px; padding: 10px 14px; }
+  .btn-small     { min-height: 36px; padding: 6px 12px; font-size: 12px; }
+  .btn-realize   { min-height: 36px; padding: 4px 10px; }
+  .type-btn      { min-height: 40px; }
+
+  /* ── Form inputs ≥ 44px ── */
+  .form-group input,
+  .form-group select { min-height: 44px; font-size: 14px; padding: 11px 13px; }
+  select             { min-height: 44px; padding: 10px 12px; }
+
+  /* ── Modals: near full-width and scrollable ── */
+  .modal {
+    width: calc(100vw - 32px);
+    max-height: 88vh;
+    overflow-y: auto;
+    border-radius: 12px;
+  }
+  .modal-header { padding: 14px 18px 12px; }
+  .modal-body   { padding: 14px 18px; }
+
+  /* ── Internal transfer row stacks ── */
+  .transfer-row   { flex-direction: column; gap: 0; }
+  .transfer-arrow { align-self: center; padding: 4px 0 8px; }
+
+  /* ── Category bars: tighter labels ── */
+  .cat-bar-label  { width: 72px; font-size: 11px; }
+  .cat-bar-amount { width: 56px; }
+
+  /* ── Import ── */
+  .import-dropzone { padding: 28px 16px; }
+
+  /* ── Debt meta: stack ── */
+  .debt-meta { flex-direction: column; align-items: flex-start; gap: 8px; }
 }

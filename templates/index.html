@@ -12,8 +12,11 @@
 
 <div class="app">
 
+  <!-- SIDEBAR OVERLAY (mobile) -->
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
   <!-- SIDEBAR -->
-  <nav class="sidebar">
+  <nav class="sidebar" id="sidebar">
     <div class="brand">
       <span class="brand-icon">₤</span>
       <span class="brand-name">Budžet</span>
@@ -49,6 +52,17 @@
 
   <!-- MAIN -->
   <main class="main">
+
+    <!-- MOBILE TOPBAR -->
+    <div class="mobile-topbar">
+      <button class="hamburger-btn" id="hamburgerBtn" aria-label="Otvori meni">
+        <span></span><span></span><span></span>
+      </button>
+      <span class="mobile-brand">
+        <span class="mobile-brand-icon">₤</span>Budžet
+      </span>
+      <input type="month" id="mobileMonth" class="mobile-month-input">
+    </div>
 
     <!-- DASHBOARD PAGE -->
     <div id="page-dashboard" class="page active">

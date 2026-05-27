@@ -59,6 +59,9 @@ $('globalMonth').value = state.month;
 $('globalMonth').addEventListener('change', e => {
   state.month = e.target.value;
   state.selectedDay = null;
+  // Keep mobile month picker in sync
+  const mob = $('mobileMonth');
+  if (mob) mob.value = e.target.value;
   const active = document.querySelector('.nav-item.active');
   if (active) refreshPage(active.dataset.page);
 });
@@ -1121,6 +1124,47 @@ async function executeTransfer() {
     btn.disabled = false;
   }
 }
+
+// ── Mobile sidebar ─────────────────────────────────────
+(function initMobileNav() {
+  const sidebar        = $('sidebar');
+  const overlay        = $('sidebarOverlay');
+  const hamburger      = $('hamburgerBtn');
+  const mobileMonthEl  = $('mobileMonth');
+
+  function openSidebar() {
+    sidebar?.classList.add('mobile-open');
+    overlay?.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeSidebar() {
+    sidebar?.classList.remove('mobile-open');
+    overlay?.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  hamburger?.addEventListener('click', openSidebar);
+  overlay?.addEventListener('click', closeSidebar);
+
+  // Close sidebar when a nav item is tapped on mobile
+  document.querySelectorAll('.nav-item').forEach(el => {
+    el.addEventListener('click', () => {
+      if (window.innerWidth <= 599) closeSidebar();
+    });
+  });
+
+  // Mobile month picker — init value and wire change
+  if (mobileMonthEl) {
+    mobileMonthEl.value = state.month;
+    mobileMonthEl.addEventListener('change', e => {
+      state.month = e.target.value;
+      $('globalMonth').value = e.target.value;
+      state.selectedDay = null;
+      const active = document.querySelector('.nav-item.active');
+      if (active) refreshPage(active.dataset.page);
+    });
+  }
+})();
 
 // ── Init ───────────────────────────────────────────────
 if ($('dashFrom')) $('dashFrom').value = state.month + '-01';
