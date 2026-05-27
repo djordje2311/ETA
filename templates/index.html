@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Budžet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Fraunces:ital,wght@0,300;0,600;1,300&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="brand">
+      <span class="brand-icon">₤</span>
+      <span class="brand-name">Budžet</span>
+    </div>
+    <div class="nav-links">
+      <a class="nav-item active" data-page="dashboard">
+        <span class="nav-icon">◈</span> Pregled
+      </a>
+      <a class="nav-item" data-page="calendar">
+        <span class="nav-icon">▦</span> Kalendar
+      </a>
+      <a class="nav-item" data-page="transactions">
+        <span class="nav-icon">◉</span> Transakcije
+      </a>
+      <a class="nav-item" data-page="import">
+        <span class="nav-icon">↑</span> Import
+      </a>
+      <a class="nav-item" data-page="debts">
+        <span class="nav-icon">◎</span> Dugovi
+      </a>
+      <a class="nav-item" data-page="budgets">
+        <span class="nav-icon">◇</span> Budžeti
+      </a>
+      <a class="nav-item" data-page="savings">
+        <span class="nav-icon">◑</span> Štednja
+      </a>
+    </div>
+    <div class="sidebar-month">
+      <label>Mesec</label>
+      <input type="month" id="globalMonth">
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- DASHBOARD PAGE -->
+    <div id="page-dashboard" class="page active">
+      <div class="page-header">
+        <h1>Finansijski pregled</h1>
+        <div class="filter-row">
+          <button class="btn-secondary" id="openTransferBtn">Interni transfer</button>
+          <button class="btn-primary" id="openAddTx">Nova transakcija</button>
+        </div>
+      </div>
+      <div class="cards-row">
+        <div class="card card-balance">
+          <div class="card-label">Ukupni saldo (Zbir tekućih)</div>
+          <div class="card-value" id="totalBalance">—</div>
+          <div class="card-sub" id="totalInEx">—</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Milica (Tekući saldo)</div>
+          <div class="card-value" id="milicaBalance">—</div>
+          <div class="card-sub" id="milicaInEx">—</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Đorđe (Tekući saldo)</div>
+          <div class="card-value" id="djordjeBalance">—</div>
+          <div class="card-sub" id="djordjeInEx">—</div>
+        </div>
+      </div>
+      <div class="dashboard-filters">
+        <label>Od:</label>
+        <input type="date" id="dashFrom">
+        <label>Do:</label>
+        <input type="date" id="dashTo">
+        <label>Ko:</label>
+        <select id="dashPerson">
+          <option value="all">Sve osobe</option>
+          <option value="Đorđe">Đorđe</option>
+          <option value="Milica">Milica</option>
+        </select>
+        <button class="btn-secondary" onclick="applyDashFilters()">Primeni</button>
+      </div>
+      <div class="two-col">
+        <div class="panel">
+          <div class="panel-header">Rashodi po kategoriji</div>
+          <div id="categoryBars"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-header">Trend — poslednjih 6 meseci</div>
+          <canvas id="trendChart" height="220"></canvas>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-header">Poslednje transakcije</div>
+        <div id="recentTxList"></div>
+      </div>
+    </div>
+
+    <!-- CALENDAR PAGE -->
+    <div id="page-calendar" class="page">
+      <div class="page-header">
+        <h1>Kalendar</h1>
+        <div class="filter-row">
+          <button class="btn-secondary" id="openAddPlanned">+ Planiraj</button>
+          <button class="btn-secondary" id="openTransferBtnCal">Interni transfer</button>
+          <button class="btn-primary" id="openAddTxCal">Nova transakcija</button>
+        </div>
+      </div>
+
+      <!-- Legend -->
+      <div class="cal-legend">
+        <span class="legend-dot realized"></span> Realizovano
+        <span class="legend-dot upcoming"></span> Planirano
+        <span class="legend-dot pending"></span> Čeka realizaciju
+      </div>
+
+      <!-- Summary strip -->
+      <div class="cal-summary-strip" id="calSummaryStrip"></div>
+
+      <!-- Calendar grid -->
+      <div class="cal-grid-wrap">
+        <div class="cal-weekdays">
+          <div>Pon</div><div>Uto</div><div>Sre</div><div>Čet</div>
+          <div>Pet</div><div>Sub</div><div>Ned</div>
+        </div>
+        <div class="cal-grid" id="calGrid"></div>
+      </div>
+
+      <!-- Day detail panel -->
+      <div class="day-detail" id="dayDetail" style="display:none">
+        <div class="day-detail-header">
+          <span id="dayDetailTitle"></span>
+          <button class="modal-close" onclick="closeDayDetail()">✕</button>
+        </div>
+        <div class="day-detail-body" id="dayDetailBody"></div>
+      </div>
+
+      <!-- Planned recurring list -->
+      <div class="panel" style="margin-top:16px">
+        <div class="panel-header">Planirane (recurring) transakcije</div>
+        <div id="plannedList"></div>
+      </div>
+    </div>
+
+    <!-- TRANSACTIONS PAGE -->
+    <div id="page-transactions" class="page">
+      <div class="page-header">
+        <h1>Transakcije</h1>
+        <div class="filter-row">
+          <select id="filterPerson">
+            <option value="all">Svi</option>
+            <option value="Milica">Milica</option>
+            <option value="Đorđe">Đorđe</option>
+          </select>
+          <button class="btn-primary" id="openAddTx2">+ Nova</button>
+        </div>
+      </div>
+      <div id="txList"></div>
+    </div>
+
+    <!-- IMPORT PAGE -->
+    <div id="page-import" class="page">
+      <div class="page-header">
+        <h1>Uvoz transakcija</h1>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">Izvod — Raiffeisen banka (RSD)</div>
+        <div class="import-dropzone" id="importDropzone">
+          <input type="file" id="importFileInput" accept=".csv,.pdf">
+          <div style="font-size:36px;color:#D1DCE8;margin-bottom:12px;line-height:1">↑</div>
+          <div id="importDropzoneText">Prevuci PDF ili CSV fajl ovde ili klikni da izabereš</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:6px">Podržani formati: PDF izvod ili CSV izvod (Raiffeisen RSD)</div>
+        </div>
+        <button class="btn-primary" id="importParseBtn" style="display:none;margin-top:16px">Analiziraj izvod</button>
+      </div>
+
+      <div id="importResults" style="display:none">
+        <div class="panel">
+          <div class="panel-header">Pronađene transakcije</div>
+          <div style="overflow-x:auto">
+            <table class="import-table">
+              <thead>
+                <tr>
+                  <th><input type="checkbox" id="importCheckAll" checked title="Sve"></th>
+                  <th>Datum</th>
+                  <th>Opis</th>
+                  <th>Iznos</th>
+                  <th>Tip</th>
+                  <th>Kategorija</th>
+                  <th>Osoba</th>
+                </tr>
+              </thead>
+              <tbody id="importTbody"></tbody>
+            </table>
+          </div>
+          <div style="margin-top:16px;display:flex;justify-content:flex-end">
+            <button class="btn-primary" id="importSaveBtn" disabled>Uvezi označene (0)</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="importSuccess" style="display:none">
+        <div class="import-success">
+          <div id="importSuccessCount" style="font-size:16px;font-weight:500;margin-bottom:14px"></div>
+          <button class="btn-secondary" onclick="goToCalendar()">Idi na Kalendar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- DEBTS PAGE -->
+    <div id="page-debts" class="page">
+      <div class="page-header">
+        <h1>Dugovi</h1>
+        <button class="btn-primary" id="openAddDebt">+ Novi dug</button>
+      </div>
+      <div class="two-col">
+        <div class="panel">
+          <div class="panel-header">Dugujemo</div>
+          <div id="debtListOwe"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-header">Duguju nam</div>
+          <div id="debtListOwed"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SAVINGS PAGE -->
+    <div id="page-savings" class="page">
+      <div class="page-header">
+        <h1>Štednja</h1>
+        <button class="btn-primary" id="openAddSavings">+ Nova štednja</button>
+      </div>
+      <div id="savingsList" class="savings-grid"></div>
+    </div>
+
+    <!-- BUDGETS PAGE -->
+    <div id="page-budgets" class="page">
+      <div class="page-header">
+        <h1>Budžeti</h1>
+        <button class="btn-primary" id="openAddBudget">+ Postavi budžet</button>
+      </div>
+      <div id="budgetList"></div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ADD TRANSACTION MODAL -->
+<div class="modal-overlay" id="modalTx">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Nova transakcija</h2>
+      <button class="modal-close" data-close="modalTx">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="type-toggle">
+        <button class="type-btn active" data-type="expense">Rashod</button>
+        <button class="type-btn" data-type="income">Prihod</button>
+      </div>
+      <div class="form-group">
+        <label>Iznos (RSD)</label>
+        <input type="number" id="txAmount" placeholder="0" min="0">
+      </div>
+      <div class="form-group">
+        <label>Kategorija</label>
+        <select id="txCategoryExpense">
+          {% for c in expense_categories %}
+          <option>{{ c }}</option>
+          {% endfor %}
+        </select>
+        <select id="txCategoryIncome" style="display:none">
+          {% for c in income_categories %}
+          <option>{{ c }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Extra fields shown only for Pozajmica -->
+      <div id="pozajmicaFields" style="display:none">
+        <div class="pozajmica-notice">
+          ℹ Pozajmica će automatski biti dodata u <strong>Dugovi</strong> (dugujemo).
+        </div>
+        <div class="form-group">
+          <label>Od koga pozajmljujemo</label>
+          <input type="text" id="txLender" placeholder="npr. Keva, Banka...">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Osoba</label>
+        <select id="txPerson">
+          <option>Milica</option>
+          <option>Đorđe</option>
+          <option>Oboje</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Datum</label>
+        <input type="date" id="txDate">
+      </div>
+      <div class="form-group">
+        <label id="txDescLabel">Opis (opciono)</label>
+        <input type="text" id="txDesc" placeholder="npr. Konzum, DIS...">
+      </div>
+      <button class="btn-primary btn-full" id="saveTx">Sačuvaj</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD PLANNED MODAL -->
+<div class="modal-overlay" id="modalPlanned">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Planirana transakcija</h2>
+      <button class="modal-close" data-close="modalPlanned">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="type-toggle">
+        <button class="type-btn active" data-ptype="expense">Rashod</button>
+        <button class="type-btn" data-ptype="income">Prihod</button>
+      </div>
+      <div class="form-group">
+        <label>Iznos (RSD)</label>
+        <input type="number" id="plannedAmount" placeholder="0" min="0">
+      </div>
+      <div class="form-group">
+        <label>Kategorija</label>
+        <select id="plannedCategoryExpense">
+          {% for c in expense_categories %}
+          <option>{{ c }}</option>
+          {% endfor %}
+        </select>
+        <select id="plannedCategoryIncome" style="display:none">
+          {% for c in income_categories %}
+          <option>{{ c }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Opis</label>
+        <input type="text" id="plannedDesc" placeholder="npr. Kirija, EPS račun...">
+      </div>
+      <div class="form-group">
+        <label>Osoba</label>
+        <select id="plannedPerson">
+          <option>Milica</option>
+          <option>Đorđe</option>
+          <option>Oboje</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Ponavljanje</label>
+        <select id="plannedRecurSelect">
+          <option value="once">Jednom — određenog datuma</option>
+          <option value="weekly">Nedeljno — isti dan u nedelji</option>
+          <option value="monthly">Mesečno — isti datum svaki mesec</option>
+        </select>
+      </div>
+      <div id="plannedDayInfo" style="font-size:11px;color:var(--text3);margin-bottom:12px;"></div>
+
+      <div id="oneTimeFields">
+        <div class="form-group">
+          <label>Datum</label>
+          <input type="date" id="plannedDate">
+        </div>
+      </div>
+      <div id="recurringFields" style="display:none">
+        <div class="form-group">
+          <label>Dan u mesecu</label>
+          <input type="number" id="plannedDay" placeholder="npr. 1, 15, 31" min="1" max="31">
+        </div>
+      </div>
+
+      <button class="btn-primary btn-full" id="savePlanned">Sačuvaj plan</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD DEBT MODAL -->
+<div class="modal-overlay" id="modalDebt">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Novi dug</h2>
+      <button class="modal-close" data-close="modalDebt">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="type-toggle">
+        <button class="type-btn active" data-dir="owe">Dugujemo</button>
+        <button class="type-btn" data-dir="owed">Duguju nam</button>
+      </div>
+      <div class="form-group">
+        <label>Ime</label>
+        <input type="text" id="debtName" placeholder="npr. Keva, Sandra...">
+      </div>
+      <div class="form-group">
+        <label>Ukupan iznos (RSD)</label>
+        <input type="number" id="debtAmount" placeholder="0" min="0">
+      </div>
+      <div class="form-group">
+        <label>Već vraćeno (RSD)</label>
+        <input type="number" id="debtPaid" placeholder="0" min="0" value="0">
+      </div>
+      <div class="form-group">
+        <label>Napomena</label>
+        <input type="text" id="debtNote" placeholder="opciono">
+      </div>
+      <button class="btn-primary btn-full" id="saveDebt">Sačuvaj</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD BUDGET MODAL -->
+<div class="modal-overlay" id="modalBudget">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Postavi budžet</h2>
+      <button class="modal-close" data-close="modalBudget">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Kategorija</label>
+        <select id="budgetCat">
+          {% for c in expense_categories %}
+          <option>{{ c }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Limit (RSD)</label>
+        <input type="number" id="budgetLimit" placeholder="0" min="0">
+      </div>
+      <button class="btn-primary btn-full" id="saveBudget">Sačuvaj</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD / EDIT SAVINGS MODAL -->
+<div class="modal-overlay" id="modalSavings">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Nova štednja</h2>
+      <button class="modal-close" data-close="modalSavings">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Naziv</label>
+        <input type="text" id="savingsName" placeholder="npr. Letovanje, Auto...">
+      </div>
+      <div class="form-group">
+        <label>Ciljna suma (RSD)</label>
+        <input type="number" id="savingsTarget" placeholder="0" min="0" step="1000">
+      </div>
+      <div class="form-group">
+        <label>Datum cilja</label>
+        <input type="date" id="savingsDate">
+      </div>
+      <div class="form-group">
+        <label>Ko štedi?</label>
+        <select id="savingsPerson">
+          <option>Đorđe</option>
+          <option>Milica</option>
+          <option>Oboje</option>
+        </select>
+      </div>
+      <button class="btn-primary btn-full" id="saveSavingsBtn">Kreiraj</button>
+    </div>
+  </div>
+</div>
+
+<!-- INTERNAL TRANSFER MODAL -->
+<div class="modal-overlay" id="internalTransferModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Interni transfer</h2>
+      <button class="modal-close" data-close="internalTransferModal">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="transfer-row">
+        <div class="form-group" style="flex:1;margin-bottom:0">
+          <label>Od</label>
+          <select id="transferFrom">
+            <option value="Đorđe">Đorđe</option>
+            <option value="Milica">Milica</option>
+          </select>
+        </div>
+        <div class="transfer-arrow">→</div>
+        <div class="form-group" style="flex:1;margin-bottom:0">
+          <label>Za</label>
+          <select id="transferTo">
+            <option value="Milica">Milica</option>
+            <option value="Đorđe">Đorđe</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group" style="margin-top:16px">
+        <label>Iznos (RSD)</label>
+        <input type="number" id="transferAmount" placeholder="0" min="0" step="100">
+      </div>
+      <div id="transferError" style="display:none;color:var(--danger);font-size:12px;margin-bottom:12px;padding:8px 10px;background:rgba(192,57,43,0.06);border-radius:6px"></div>
+      <div style="display:flex;gap:10px;margin-top:4px">
+        <button class="btn-secondary btn-full" id="transferCancelBtn">Otkaži</button>
+        <button class="btn-primary btn-full" id="transferSubmitBtn">Prebaci</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/static/js/app.js"></script>
+<script>
+  window.EXPENSE_CATEGORIES = {{ expense_categories | tojson }};
+  window.INCOME_CATEGORIES  = {{ income_categories  | tojson }};
+</script>
+<script src="/static/js/importer.js"></script>
+</body>
+</html>

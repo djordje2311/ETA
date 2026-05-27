@@ -1,0 +1,8 @@
+budzet.db
+__pycache__/
+*.pyc
+.claude/
+inspect_*.py
+test_*.py
+.env
+.DS_Store
