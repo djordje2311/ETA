@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Budžet — Prijava</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Fraunces:ital,wght@0,300;0,600;1,300&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/style.css">
+<style>
+  .login-wrap {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #F7F9FC;
+    padding: 24px;
+  }
+  .login-card {
+    background: #FFFFFF;
+    border: 1px solid #D1DCE8;
+    border-radius: 16px;
+    box-shadow: 0 4px 24px rgba(10, 65, 116, 0.08);
+    padding: 48px 44px 40px;
+    width: 100%;
+    max-width: 380px;
+    animation: slideUp 0.25s ease;
+  }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: none; }
+  }
+  .login-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-content: center;
+    margin-bottom: 36px;
+  }
+  .login-brand-icon {
+    font-size: 26px;
+    color: #4E8EA2;
+    line-height: 1;
+  }
+  .login-brand-name {
+    font-family: 'Fraunces', serif;
+    font-size: 24px;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+    color: #0A4174;
+  }
+  .login-label {
+    display: block;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: #8FA3B8;
+    margin-bottom: 7px;
+  }
+  .login-input {
+    width: 100%;
+    background: #F7F9FC;
+    border: 1px solid #D1DCE8;
+    border-radius: 8px;
+    color: #0D1B2A;
+    padding: 13px 14px;
+    font-family: 'DM Mono', monospace;
+    font-size: 16px;
+    outline: none;
+    transition: border-color 0.15s;
+    -webkit-appearance: none;
+    appearance: none;
+    margin-bottom: 20px;
+    box-sizing: border-box;
+  }
+  .login-input:focus { border-color: #0A4174; }
+  .login-error {
+    background: rgba(192, 57, 43, 0.07);
+    border: 1px solid rgba(192, 57, 43, 0.25);
+    border-radius: 8px;
+    color: #C0392B;
+    font-size: 12px;
+    padding: 10px 13px;
+    margin-bottom: 16px;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+<div class="login-wrap">
+  <div class="login-card">
+    <div class="login-brand">
+      <span class="login-brand-icon">₤</span>
+      <span class="login-brand-name">Budžet</span>
+    </div>
+
+    {% if error %}
+    <div class="login-error">{{ error }}</div>
+    {% endif %}
+
+    <form method="POST" action="/login">
+      <label class="login-label" for="password">Lozinka</label>
+      <input
+        class="login-input"
+        type="password"
+        id="password"
+        name="password"
+        placeholder="••••••••"
+        autocomplete="current-password"
+        autofocus
+      >
+      <button type="submit" class="btn-primary btn-full">Prijavi se</button>
+    </form>
+  </div>
+</div>
+</body>
+</html>

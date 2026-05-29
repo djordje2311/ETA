@@ -33,6 +33,7 @@ const SHORT_MONTHS = ['Jan','Feb','Mar','Apr','Maj','Jun','Jul','Avg','Sep','Okt
 
 async function api(path, opts = {}) {
   const r = await fetch(path, { headers: { 'Content-Type': 'application/json' }, ...opts });
+  if (r.status === 401) { window.location.href = '/login'; return {}; }
   return r.json();
 }
 

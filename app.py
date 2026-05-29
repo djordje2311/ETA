@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for
 import sqlite3, os, re
 from datetime import datetime, date
 from io import BytesIO, StringIO
@@ -7,7 +7,35 @@ from contextlib import contextmanager
 import pdfplumber
 
 app = Flask(__name__)
+app.secret_key = os.environ.get('SECRET_KEY', 'dev-only')
 DB = os.path.join(os.path.dirname(__file__), 'budzet.db')
+
+APP_PASSWORD = os.environ.get('APP_PASSWORD')
+
+@app.before_request
+def require_login():
+    if request.endpoint in ('login', 'logout', 'static'):
+        return
+    if not session.get('logged_in'):
+        if request.path.startswith('/api/'):
+            return jsonify({'error': 'Unauthorized'}), 401
+        return redirect(url_for('login'))
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    error = None
+    if request.method == 'POST':
+        password = request.form.get('password', '')
+        if APP_PASSWORD and password == APP_PASSWORD:
+            session['logged_in'] = True
+            return redirect(url_for('index'))
+        error = 'Pogrešna lozinka.'
+    return render_template('login.html', error=error)
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('login'))
 
 EXPENSE_CATEGORIES = [
     'Kirija', 'Krediti', 'Računi', 'Hrana', 'Gorivo',
