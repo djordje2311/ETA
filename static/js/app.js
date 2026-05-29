@@ -18,6 +18,7 @@ const state = {
 
 // ── Utils ──────────────────────────────────────────────
 const fmt = n => new Intl.NumberFormat('sr-RS').format(Math.round(n)) + ' RSD';
+const dispCat = c => (c && c.startsWith('savings:')) ? c.slice(8) : c;
 const fmtShort = n => {
   const abs = Math.abs(n);
   if (abs >= 1000000) return (n/1000000).toFixed(1) + 'M';
@@ -105,7 +106,7 @@ function renderCategoryBars(by_cat) {
   const max = entries[0]?.[1] || 1;
   const html = entries.map(([cat, amt]) => `
     <div class="cat-bar-row">
-      <div class="cat-bar-label">${cat}</div>
+      <div class="cat-bar-label">${dispCat(cat)}</div>
       <div class="cat-bar-track">
         <div class="cat-bar-fill" style="width:${(amt/max*100).toFixed(1)}%"></div>
       </div>
@@ -263,7 +264,7 @@ function renderCalGrid(days) {
         ? (item.type === 'income' ? 'real-income' : 'real-expense')
         : 'plan-pending';
       const sign = item.type === 'income' ? '+' : '−';
-      const label = `${sign}${fmtShort(item.amount)} ${item.category}`;
+      const label = `${sign}${fmtShort(item.amount)} ${dispCat(item.category)}`;
       chips += `<div class="cal-chip ${cls}">${label}</div>`;
     }
     if (allItems.length > 3) chips += `<div class="cal-chip" style="color:var(--text3)">+${allItems.length-3} više</div>`;
@@ -343,7 +344,7 @@ function renderDetailSection(items, type, sectionId, day, dateStr) {
         <div class="detail-tx-row">
           <div class="detail-tx-dot" style="background:${item.type==='income'?'var(--income-color)':'var(--expense-color)'}"></div>
           <div class="detail-tx-info">
-            <div>${item.category}${item.description ? ' · '+item.description : ''}</div>
+            <div>${dispCat(item.category)}${item.description ? ' · '+item.description : ''}</div>
             <div class="detail-tx-meta">${item.person}</div>
           </div>
           <div class="detail-tx-amount ${item.type}">${item.type==='income'?'+':'−'}${fmt(item.amount)}</div>
@@ -356,7 +357,7 @@ function renderDetailSection(items, type, sectionId, day, dateStr) {
         <div class="detail-tx-row detail-plan-row">
           <div class="detail-tx-dot" style="background:${item.type==='income'?'var(--accent)':'#e88898'}"></div>
           <div class="detail-tx-info">
-            <div>${item.category}${item.description ? ' · '+item.description : ''}</div>
+            <div>${dispCat(item.category)}${item.description ? ' · '+item.description : ''}</div>
             <div class="detail-tx-meta">${item.person} · ${item.recurring ? 'mesečno' : 'jednom'}</div>
           </div>
           <div class="detail-tx-amount" style="color:${item.type==='income'?'var(--accent)':'#e88898'}">${item.type==='income'?'+':'−'}${fmt(item.amount)}</div>
@@ -418,7 +419,7 @@ function renderPlannedList(planned) {
     <div class="planned-item">
       <span class="planned-badge ${p.recurring ? 'recurring':'once'}">${p.recurring ? '↻ recurring':'jednom'}</span>
       <div class="planned-info">
-        <div class="planned-name">${p.category}${p.description ? ' · '+p.description : ''}</div>
+        <div class="planned-name">${dispCat(p.category)}${p.description ? ' · '+p.description : ''}</div>
         <div class="planned-meta">${whenLabel} · ${p.person}</div>
       </div>
       <div class="planned-amount ${p.type}">${p.type==='income'?'+':'−'}${fmt(p.amount)}</div>
@@ -451,7 +452,7 @@ function renderTxList(container, txs) {
     <div class="tx-item">
       <div class="tx-dot ${tx.type}"></div>
       <div class="tx-info">
-        <div class="tx-cat">${tx.category}${tx.description ? ' · ' + tx.description : ''}</div>
+        <div class="tx-cat">${dispCat(tx.category)}${tx.description ? ' · ' + tx.description : ''}</div>
         <div class="tx-meta">${tx.date} · ${tx.person}</div>
       </div>
       <div class="tx-amount ${tx.type}">
@@ -935,7 +936,8 @@ function _applySavingsCategories(savings) {
     grp.dataset.savings = 'true';
     names.forEach(name => {
       const o = document.createElement('option');
-      o.value = o.textContent = name;
+      o.value = 'savings:' + name;
+      o.textContent = name;
       grp.appendChild(o);
     });
     sel.appendChild(grp);

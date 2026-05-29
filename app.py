@@ -102,10 +102,10 @@ def _get_learned_category(description):
     return row['category'] if row else None
 
 def _maybe_update_savings(conn, category, amount, tx_type):
-    """If this expense's category matches a savings goal name, increment its balance."""
-    if tx_type != 'expense':
+    if tx_type != 'expense' or not category.startswith('savings:'):
         return
-    row = conn.execute("SELECT id FROM savings WHERE name = ?", (category,)).fetchone()
+    name = category[len('savings:'):]
+    row = conn.execute("SELECT id FROM savings WHERE name = ?", (name,)).fetchone()
     if row:
         conn.execute(
             "UPDATE savings SET current_amount = current_amount + ? WHERE id = ?",
