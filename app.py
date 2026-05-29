@@ -182,7 +182,7 @@ def get_summary():
         sql  = "SELECT * FROM transactions WHERE date >= ? AND date <= ?"
         args = [date_from, date_to]
         if person != 'all':
-            sql += " AND person = ?"
+            sql += " AND (person = ? OR person = 'Oboje')"
             args.append(person)
         rows = conn.execute(sql, args).fetchall()
 
@@ -450,7 +450,6 @@ def get_savings():
         pct = round(r['current_amount'] / r['target_amount'] * 100, 1) if r['target_amount'] > 0 else 0
         days_left = None
         if r['target_date']:
-            from datetime import date as _date
             delta = _date.fromisoformat(r['target_date']) - _date.fromisoformat(today_iso)
             days_left = delta.days
         r['progress_percent'] = min(pct, 100.0)
