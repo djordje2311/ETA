@@ -8,7 +8,14 @@
 ## Current Status
 - ✅ Desktop verzija radi savršeno
 - ✅ Mobile CSS implementiran i radi na pravom iPhone-u
-- ✅ Deployment na Replit radi (gunicorn, port 5000)
+- ✅ Produkcija: PythonAnywhere (besplatno, trajno)
+- ✅ Login stranica sa zaštitom lozinkom
+
+## Hosting
+- **PythonAnywhere**: https://djordje2311.pythonanywhere.com (produkcija)
+- **Replit**: https://eta--djordjeristicwo.replit.app (staro, više se ne koristi)
+- Database: `budzet.db` je manuelno uploadovan na PythonAnywhere, nije u git
+- Za update koda: `git pull` na PythonAnywhere + Reload na Web tabu
 
 ## Key Features
 - Štednja (Savings) modul sa progress bars
@@ -44,12 +51,20 @@
 - font-size 16px na mobile inputs (sprečava iOS auto-zoom)
 - -webkit-tap-highlight-color:transparent na buttons
 
-## Deployment (Replit)
-- Dev server: `python app.py` (port 5000)
-- Production: `gunicorn app:app --bind 0.0.0.0:5000`
-- Config: `.replit` fajl sa `[deployment]` sekcijom, `Procfile`
+## Authentication
+- Flask session-based auth, jedan zajednički password
+- `SECRET_KEY` i `APP_PASSWORD` — env varijable u PythonAnywhere WSGI fajlu
+- `@app.before_request` štiti sve rute odjednom (ne per-route)
+- API rute vraćaju 401 JSON kad nema sesije; page rute redirectuju na `/login`
+- `api()` funkcija u app.js redirectuje na `/login` kad dobije 401
+- Login stranica: `templates/login.html`
+- Logout link u dnu sidebara
+
+## Deployment
+- **Dev (lokalno)**: `python app.py` (port 5000)
+- **Produkcija**: PythonAnywhere — `gunicorn app:app --bind 0.0.0.0:5000`
 - requirements.txt: flask, pdfplumber, gunicorn
-- Replit ne auto-deployuje — treba kliknuti Deploy nakon promena
+- WSGI fajl: `/var/www/djordje2311_pythonanywhere_com_wsgi.py`
 
 ## Savings Namespacing
 - Savings goal categories imaju `savings:` prefix u bazi (npr. `savings:Putovanje`)
