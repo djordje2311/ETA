@@ -90,7 +90,10 @@ INCOME_CATEGORIES = [
 
 @contextmanager
 def get_db():
-    path = getattr(g, 'db_path', DB)
+    try:
+        path = g.db_path
+    except (AttributeError, RuntimeError):
+        path = DB
     conn = sqlite3.connect(path)
     conn.row_factory = sqlite3.Row
     try:
