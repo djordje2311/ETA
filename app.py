@@ -1006,6 +1006,15 @@ def admin_add_category():
         except sqlite3.IntegrityError:
             return jsonify({'error': 'Kategorija već postoji'}), 409
 
+@app.route('/api/admin/categories/<int:cid>', methods=['PATCH'])
+def admin_update_category(cid):
+    name = (request.json.get('name') or '').strip()
+    if not name:
+        return jsonify({'error': 'Naziv je obavezan'}), 400
+    with get_db() as conn:
+        conn.execute("UPDATE categories SET name=? WHERE id=?", (name, cid))
+    return jsonify({'ok': True})
+
 @app.route('/api/admin/categories/<int:cid>', methods=['DELETE'])
 def admin_delete_category(cid):
     with get_db() as conn:

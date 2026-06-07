@@ -1199,16 +1199,39 @@ async function loadAdmin() {
 }
 
 function renderAdminCategories(cats) {
-  const el = $('adminCatList');
+  renderAdminCatList('adminExpenseList', cats.filter(c => c.type === 'expense'));
+  renderAdminCatList('adminIncomeList',  cats.filter(c => c.type === 'income'));
+}
+
+function renderAdminCatList(elId, cats) {
+  const el = $(elId);
   if (!el) return;
   if (!cats.length) { el.innerHTML = '<p style="color:#8FA3B8;font-size:12px;">Nema kategorija.</p>'; return; }
   el.innerHTML = cats.map(c => `
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid #EEF2F7;">
-      <span style="font-size:12px;">${c.name}
-        <span style="color:#8FA3B8;margin-left:6px;">${c.type === 'expense' ? 'Rashod' : 'Prihod'}</span>
-      </span>
+    <div id="adminCatRow-${c.id}" style="display:flex;align-items:center;gap:6px;padding:7px 0;border-bottom:1px solid #EEF2F7;">
+      <span style="font-size:12px;flex:1;">${c.name}</span>
+      <button class="btn-small" onclick="adminEditCategory(${c.id},'${c.name.replace(/'/g,"\\'")}')">✎</button>
       <button class="btn-small" style="color:#C0392B;border-color:#C0392B;" onclick="adminDeleteCategory(${c.id})">✕</button>
     </div>`).join('');
+}
+
+function adminEditCategory(id, currentName) {
+  const row = document.getElementById('adminCatRow-' + id);
+  if (!row) return;
+  row.innerHTML = `
+    <input class="form-input" id="editCatInput-${id}" value="${currentName}" style="flex:1;">
+    <button class="btn-small btn-primary" onclick="adminSaveCategory(${id})">✓</button>
+    <button class="btn-small" onclick="loadAdmin()">✕</button>`;
+  document.getElementById('editCatInput-' + id).focus();
+}
+
+async function adminSaveCategory(id) {
+  const input = document.getElementById('editCatInput-' + id);
+  const name = input ? input.value.trim() : '';
+  if (!name) return;
+  const res = await api('/api/admin/categories/' + id, { method: 'PATCH', body: JSON.stringify({ name }) });
+  if (res.error) { alert(res.error); return; }
+  loadAdmin();
 }
 
 function renderAdminUsers(users) {

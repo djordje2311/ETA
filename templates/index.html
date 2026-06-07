@@ -281,34 +281,66 @@
       <div class="page-header">
         <h1>Admin</h1>
       </div>
+
+      <!-- Categories: two columns -->
       <div class="two-col">
         <div class="panel">
-          <div class="panel-header"><span>Kategorije</span></div>
-          <div id="adminCatList"></div>
-          <form id="adminCatForm" style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;">
-            <input id="adminCatName" class="form-input" type="text" placeholder="Naziv kategorije" style="flex:1;min-width:120px;">
-            <select id="adminCatType" class="form-input" style="min-width:110px;">
+          <div class="panel-header"><span>Rashod kategorije</span></div>
+          <div id="adminExpenseList"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><span>Prihod kategorije</span></div>
+          <div id="adminIncomeList"></div>
+        </div>
+      </div>
+
+      <!-- Add new category -->
+      <div class="panel">
+        <div class="panel-header"><span>Nova kategorija</span></div>
+        <form id="adminCatForm" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+          <div style="flex:1;min-width:160px;">
+            <label style="font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:#8FA3B8;display:block;margin-bottom:5px;">Naziv</label>
+            <input id="adminCatName" class="form-input" type="text" placeholder="Naziv kategorije">
+          </div>
+          <div style="min-width:130px;">
+            <label style="font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:#8FA3B8;display:block;margin-bottom:5px;">Tip</label>
+            <select id="adminCatType" class="form-input">
               <option value="expense">Rashod</option>
               <option value="income">Prihod</option>
             </select>
-            <button type="submit" class="btn-primary btn-small">+ Dodaj</button>
-          </form>
-        </div>
-        <div class="panel">
-          <div class="panel-header"><span>Korisnici</span></div>
-          <div id="adminUserList"></div>
-          <form id="adminUserForm" style="margin-top:16px;display:flex;flex-direction:column;gap:8px;">
-            <input id="adminUserName" class="form-input" type="text" placeholder="Korisničko ime">
-            <input id="adminUserPass" class="form-input" type="password" placeholder="Lozinka">
-            <input id="adminUserPerson" class="form-input" type="text" placeholder="Ime osobe (npr. Đorđe)">
+          </div>
+          <button type="submit" class="btn-primary btn-small" style="height:38px;">+ Dodaj</button>
+        </form>
+      </div>
+
+      <!-- Users -->
+      <div class="panel">
+        <div class="panel-header"><span>Korisnici</span></div>
+        <div id="adminUserList"></div>
+        <form id="adminUserForm" style="margin-top:16px;display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;">
+          <div style="flex:1;min-width:130px;">
+            <label style="font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:#8FA3B8;display:block;margin-bottom:5px;">Korisničko ime</label>
+            <input id="adminUserName" class="form-input" type="text" placeholder="djordje">
+          </div>
+          <div style="flex:1;min-width:130px;">
+            <label style="font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:#8FA3B8;display:block;margin-bottom:5px;">Lozinka</label>
+            <input id="adminUserPass" class="form-input" type="password" placeholder="Password">
+          </div>
+          <div style="flex:1;min-width:130px;">
+            <label style="font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:#8FA3B8;display:block;margin-bottom:5px;">Ime osobe</label>
+            <input id="adminUserPerson" class="form-input" type="text" placeholder="Đorđe">
+          </div>
+          <div style="min-width:110px;">
+            <label style="font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:#8FA3B8;display:block;margin-bottom:5px;">Rola</label>
             <select id="adminUserRole" class="form-input">
               <option value="user">Korisnik</option>
               <option value="admin">Admin</option>
             </select>
-            <button type="submit" class="btn-primary btn-small">+ Dodaj korisnika</button>
-          </form>
-        </div>
+          </div>
+          <button type="submit" class="btn-primary btn-small" style="height:38px;">+ Dodaj</button>
+        </form>
       </div>
+
     </div>
     {% endif %}
 
