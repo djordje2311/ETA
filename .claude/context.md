@@ -10,6 +10,13 @@
 - ✅ Mobile CSS implementiran i radi na pravom iPhone-u
 - ✅ Produkcija: PythonAnywhere (besplatno, trajno)
 - ✅ Login stranica sa zaštitom lozinkom
+- ✅ Multi-user login + Admin tab (kategorije, korisnici, demo korisnik)
+- ⏸️ AI Analiza — KOD JE GOTOV i pushovan, ali NIJE deployovan/testiran
+  - Sledeći koraci (na korisniku): nabaviti Anthropic API ključ +
+    upgrade PythonAnywhere na Hacker plan ($5/mo) + setovati env varijable
+    (AI_PROVIDER, AI_API_KEY, AI_MODEL) u WSGI fajlu + `pip install -r requirements.txt`
+  - Lokalno testiranje moguće: `set` env varijable + `python app.py`
+  - `requests` je instaliran lokalno
 
 ## Hosting
 - **PythonAnywhere**: https://djordje2311.pythonanywhere.com (produkcija)
