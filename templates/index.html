@@ -43,6 +43,11 @@
       <a class="nav-item" data-page="savings">
         <span class="nav-icon">◑</span> Štednja
       </a>
+      {% if is_admin %}
+      <a class="nav-item" data-page="admin">
+        <span class="nav-icon">⚙</span> Admin
+      </a>
+      {% endif %}
     </div>
     <div class="sidebar-month">
       <label>Mesec</label>
@@ -269,6 +274,43 @@
       </div>
       <div id="budgetList"></div>
     </div>
+
+    {% if is_admin %}
+    <!-- ADMIN PAGE -->
+    <div id="page-admin" class="page">
+      <div class="page-header">
+        <h1>Admin</h1>
+      </div>
+      <div class="two-col">
+        <div class="panel">
+          <div class="panel-header"><span>Kategorije</span></div>
+          <div id="adminCatList"></div>
+          <form id="adminCatForm" style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;">
+            <input id="adminCatName" class="form-input" type="text" placeholder="Naziv kategorije" style="flex:1;min-width:120px;">
+            <select id="adminCatType" class="form-input" style="min-width:110px;">
+              <option value="expense">Rashod</option>
+              <option value="income">Prihod</option>
+            </select>
+            <button type="submit" class="btn-primary btn-small">+ Dodaj</button>
+          </form>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><span>Korisnici</span></div>
+          <div id="adminUserList"></div>
+          <form id="adminUserForm" style="margin-top:16px;display:flex;flex-direction:column;gap:8px;">
+            <input id="adminUserName" class="form-input" type="text" placeholder="Korisničko ime">
+            <input id="adminUserPass" class="form-input" type="password" placeholder="Lozinka">
+            <input id="adminUserPerson" class="form-input" type="text" placeholder="Ime osobe (npr. Đorđe)">
+            <select id="adminUserRole" class="form-input">
+              <option value="user">Korisnik</option>
+              <option value="admin">Admin</option>
+            </select>
+            <button type="submit" class="btn-primary btn-small">+ Dodaj korisnika</button>
+          </form>
+        </div>
+      </div>
+    </div>
+    {% endif %}
 
   </main>
 </div>
@@ -538,6 +580,9 @@
 <script>
   window.EXPENSE_CATEGORIES = {{ expense_categories | tojson }};
   window.INCOME_CATEGORIES  = {{ income_categories  | tojson }};
+  window.CURRENT_USER  = {{ current_user  | tojson }};
+  window.PERSON_NAME   = {{ person_name   | tojson }};
+  window.IS_ADMIN      = {{ is_admin      | tojson }};
 </script>
 <script src="/static/js/importer.js"></script>
 </body>

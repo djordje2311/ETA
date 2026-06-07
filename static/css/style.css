@@ -534,6 +534,23 @@ select:focus { border-color: var(--accent); }
 }
 .form-group input:focus, .form-group select:focus { border-color: #0A4174; }
 .form-group input::placeholder { color: var(--text3); }
+.form-input {
+  background: #F7F9FC;
+  border: 1px solid #D1DCE8;
+  border-radius: 8px;
+  color: #0D1B2A;
+  padding: 9px 12px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  outline: none;
+  transition: border-color 0.15s;
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+.form-input:focus { border-color: #0A4174; }
+.form-input::placeholder { color: var(--text3); }
 
 /* SCROLLBAR */
 ::-webkit-scrollbar { width: 4px; }

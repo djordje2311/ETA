@@ -52,13 +52,28 @@
 - -webkit-tap-highlight-color:transparent na buttons
 
 ## Authentication
-- Flask session-based auth, jedan zajednički password
+- Flask session-based auth sa per-user nalozima (username + hashed password)
 - `SECRET_KEY` i `APP_PASSWORD` — env varijable u PythonAnywhere WSGI fajlu
-- `@app.before_request` štiti sve rute odjednom (ne per-route)
-- API rute vraćaju 401 JSON kad nema sesije; page rute redirectuju na `/login`
-- `api()` funkcija u app.js redirectuje na `/login` kad dobije 401
-- Login stranica: `templates/login.html`
+- **Fallback**: ako `users` tabela prazna → koristi `APP_PASSWORD` (legacy)
+- Kad postoje user nalozi → login traži username + password (werkzeug hash)
+- Session čuva: `user_id`, `username`, `role`, `person_name`
+- `@app.before_request` štiti sve rute; `/api/admin/*` zahteva role='admin'
+- API rute vraćaju 401 JSON (bez sesije) ili 403 JSON (bez admin role)
+- `api()` u app.js redirectuje na `/login` na 401
+- Login: `templates/login.html` — prikazuje username polje ako postoje nalozi
 - Logout link u dnu sidebara
+
+## Admin Tab (samo admin role)
+- Pristup: samo korisnici sa `role='admin'` vide Admin tab u sidebaru
+- **Kategorije**: add/remove expense i income kategorije (iz DB, ne hardcoded)
+- **Korisnici**: add/remove login naloge, assign roles, link person_name
+- Admin je Đorđe (prvi nalog sa role='admin')
+
+## Multi-User Design
+- Svi korisnici vide sve podatke (household app, nema izolacije)
+- `person_name` na user nalogu → default "Ko?" u transaction formi
+- `users` tabela odvojena od `person` labela na transakcijama
+- Spreman za buduće: dodati `household_id` u sve tabele za multi-household
 
 ## Deployment
 - **Dev (lokalno)**: `python app.py` (port 5000)

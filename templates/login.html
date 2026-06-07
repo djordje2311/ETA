@@ -99,6 +99,27 @@
     {% endif %}
 
     <form method="POST" action="/login">
+      {% if users_exist %}
+      <label class="login-label" for="username">Korisničko ime</label>
+      <input
+        class="login-input"
+        type="text"
+        id="username"
+        name="username"
+        placeholder="djordje"
+        autocomplete="username"
+        autofocus
+      >
+      <label class="login-label" for="password">Lozinka</label>
+      <input
+        class="login-input"
+        type="password"
+        id="password"
+        name="password"
+        placeholder="••••••••"
+        autocomplete="current-password"
+      >
+      {% else %}
       <label class="login-label" for="password">Lozinka</label>
       <input
         class="login-input"
@@ -109,6 +130,7 @@
         autocomplete="current-password"
         autofocus
       >
+      {% endif %}
       <button type="submit" class="btn-primary btn-full">Prijavi se</button>
     </form>
   </div>

@@ -55,6 +55,7 @@ function refreshPage(page) {
   if (page === 'debts')        loadDebts();
   if (page === 'budgets')      loadBudgets();
   if (page === 'savings')      loadSavings();
+  if (page === 'admin')        loadAdmin();
 }
 
 $('globalMonth').value = state.month;
@@ -1178,3 +1179,92 @@ api('/api/savings').then(savings => {
   _allSavings = savings;
   _applySavingsCategories(savings);
 });
+
+// ── Default person from logged-in user ─────────────────
+if (window.PERSON_NAME) {
+  const txPerson = $('txPerson');
+  if (txPerson) {
+    [...txPerson.options].forEach(o => { o.selected = o.value === window.PERSON_NAME; });
+  }
+}
+
+// ── Admin ───────────────────────────────────────────────
+async function loadAdmin() {
+  const [cats, users] = await Promise.all([
+    api('/api/admin/categories'),
+    api('/api/admin/users'),
+  ]);
+  renderAdminCategories(cats);
+  renderAdminUsers(users);
+}
+
+function renderAdminCategories(cats) {
+  const el = $('adminCatList');
+  if (!el) return;
+  if (!cats.length) { el.innerHTML = '<p style="color:#8FA3B8;font-size:12px;">Nema kategorija.</p>'; return; }
+  el.innerHTML = cats.map(c => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid #EEF2F7;">
+      <span style="font-size:12px;">${c.name}
+        <span style="color:#8FA3B8;margin-left:6px;">${c.type === 'expense' ? 'Rashod' : 'Prihod'}</span>
+      </span>
+      <button class="btn-small" style="color:#C0392B;border-color:#C0392B;" onclick="adminDeleteCategory(${c.id})">✕</button>
+    </div>`).join('');
+}
+
+function renderAdminUsers(users) {
+  const el = $('adminUserList');
+  if (!el) return;
+  if (!users.length) { el.innerHTML = '<p style="color:#8FA3B8;font-size:12px;">Nema korisnika.</p>'; return; }
+  el.innerHTML = users.filter(u => u.active).map(u => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid #EEF2F7;">
+      <span style="font-size:12px;">${u.username}
+        ${u.person_name ? `<span style="color:#4E8EA2;margin-left:4px;">(${u.person_name})</span>` : ''}
+        <span style="color:#8FA3B8;margin-left:6px;">${u.role}</span>
+      </span>
+      <button class="btn-small" style="color:#C0392B;border-color:#C0392B;" onclick="adminDeleteUser(${u.id})">✕</button>
+    </div>`).join('');
+}
+
+async function adminDeleteCategory(id) {
+  if (!confirm('Obriši kategoriju?')) return;
+  await api('/api/admin/categories/' + id, { method: 'DELETE' });
+  loadAdmin();
+}
+
+async function adminDeleteUser(id) {
+  if (!confirm('Deaktivirati korisnika?')) return;
+  await api('/api/admin/users/' + id, { method: 'DELETE' });
+  loadAdmin();
+}
+
+if ($('adminCatForm')) {
+  $('adminCatForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const name = $('adminCatName').value.trim();
+    const type = $('adminCatType').value;
+    if (!name) return;
+    const res = await api('/api/admin/categories', { method: 'POST', body: JSON.stringify({ name, type }) });
+    if (res.error) { alert(res.error); return; }
+    $('adminCatName').value = '';
+    loadAdmin();
+  });
+}
+
+if ($('adminUserForm')) {
+  $('adminUserForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const body = {
+      username:    $('adminUserName').value.trim(),
+      password:    $('adminUserPass').value,
+      person_name: $('adminUserPerson').value.trim(),
+      role:        $('adminUserRole').value,
+    };
+    if (!body.username || !body.password) { alert('Korisničko ime i lozinka su obavezni.'); return; }
+    const res = await api('/api/admin/users', { method: 'POST', body: JSON.stringify(body) });
+    if (res.error) { alert(res.error); return; }
+    $('adminUserName').value = '';
+    $('adminUserPass').value = '';
+    $('adminUserPerson').value = '';
+    loadAdmin();
+  });
+}

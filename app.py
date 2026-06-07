@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for
+from werkzeug.security import generate_password_hash, check_password_hash
 import sqlite3, os, re
 from datetime import datetime, date
 from io import BytesIO, StringIO
@@ -20,17 +21,41 @@ def require_login():
         if request.path.startswith('/api/'):
             return jsonify({'error': 'Unauthorized'}), 401
         return redirect(url_for('login'))
+    if request.path.startswith('/api/admin/') and session.get('role') != 'admin':
+        return jsonify({'error': 'Forbidden'}), 403
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    with get_db() as conn:
+        users_exist = conn.execute("SELECT 1 FROM users WHERE active=1 LIMIT 1").fetchone() is not None
     error = None
     if request.method == 'POST':
-        password = request.form.get('password', '')
-        if APP_PASSWORD and password == APP_PASSWORD:
-            session['logged_in'] = True
-            return redirect(url_for('index'))
-        error = 'Pogrešna lozinka.'
-    return render_template('login.html', error=error)
+        if users_exist:
+            username = request.form.get('username', '').strip()
+            password = request.form.get('password', '')
+            with get_db() as conn:
+                user = conn.execute(
+                    "SELECT * FROM users WHERE username=? AND active=1", (username,)
+                ).fetchone()
+            if user and check_password_hash(user['password_hash'], password):
+                session['logged_in']   = True
+                session['user_id']     = user['id']
+                session['username']    = user['username']
+                session['role']        = user['role']
+                session['person_name'] = user['person_name']
+                return redirect(url_for('index'))
+            error = 'Pogrešno korisničko ime ili lozinka.'
+        else:
+            password = request.form.get('password', '')
+            if APP_PASSWORD and password == APP_PASSWORD:
+                session['logged_in']   = True
+                session['user_id']     = None
+                session['username']    = 'admin'
+                session['role']        = 'admin'
+                session['person_name'] = None
+                return redirect(url_for('index'))
+            error = 'Pogrešna lozinka.'
+    return render_template('login.html', error=error, users_exist=users_exist)
 
 @app.route('/logout')
 def logout():
@@ -117,6 +142,30 @@ def init_db():
                 (1, 'Letovanje', 150000, 45000, '2026-08-15', 'Oboje'),
                 (2, 'Auto',      500000, 75000, '2027-06-01', 'Đorđe'),
                 (3, 'Kuća',     2000000, 200000, '2030-01-01', 'Oboje');
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT NOT NULL UNIQUE,
+                password_hash TEXT NOT NULL,
+                person_name TEXT,
+                role TEXT DEFAULT 'user' CHECK(role IN ('admin','user')),
+                active INTEGER DEFAULT 1,
+                created_at TEXT DEFAULT (datetime('now'))
+            );
+            CREATE TABLE IF NOT EXISTS categories (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                type TEXT NOT NULL CHECK(type IN ('expense','income')),
+                active INTEGER DEFAULT 1,
+                UNIQUE(name, type)
+            );
+            INSERT OR IGNORE INTO categories (name, type) VALUES
+                ('Kirija','expense'),('Krediti','expense'),('Računi','expense'),
+                ('Hrana','expense'),('Gorivo','expense'),('Cigarete','expense'),
+                ('Telefon','expense'),('Pretplate','expense'),('Druženje','expense'),
+                ('Dostava','expense'),('Poklon','expense'),('Dugovi','expense'),
+                ('Putovanje','expense'),('Ostalo','expense'),
+                ('Plata','income'),('Bonus','income'),('Poklon','income'),
+                ('Pozajmica','income'),('Drugo','income');
         ''')
 
 init_db()
@@ -142,9 +191,18 @@ def _maybe_update_savings(conn, category, amount, tx_type):
 
 @app.route('/')
 def index():
+    with get_db() as conn:
+        cats = conn.execute(
+            "SELECT name, type FROM categories WHERE active=1 ORDER BY name"
+        ).fetchall()
+    expense_categories = [r['name'] for r in cats if r['type'] == 'expense'] or EXPENSE_CATEGORIES
+    income_categories  = [r['name'] for r in cats if r['type'] == 'income']  or INCOME_CATEGORIES
     return render_template('index.html',
-                           expense_categories=EXPENSE_CATEGORIES,
-                           income_categories=INCOME_CATEGORIES)
+                           expense_categories=expense_categories,
+                           income_categories=income_categories,
+                           is_admin=session.get('role') == 'admin',
+                           current_user=session.get('username', ''),
+                           person_name=session.get('person_name') or '')
 
 # ── Transactions ───────────────────────────────────────────────────────────────
 
@@ -921,6 +979,89 @@ def import_save():
                 )
             _maybe_update_savings(conn, t['category'], float(t['amount']), t['type'])
     return jsonify({'ok': True, 'count': len(txs)})
+
+# ── Admin ───────────────────────────────────────────────────────────────────────
+
+@app.route('/api/admin/categories', methods=['GET'])
+def admin_get_categories():
+    with get_db() as conn:
+        rows = conn.execute(
+            "SELECT * FROM categories WHERE active=1 ORDER BY type, name"
+        ).fetchall()
+    return jsonify([dict(r) for r in rows])
+
+@app.route('/api/admin/categories', methods=['POST'])
+def admin_add_category():
+    d = request.json
+    name = (d.get('name') or '').strip()
+    cat_type = d.get('type')
+    if not name or cat_type not in ('expense', 'income'):
+        return jsonify({'error': 'Naziv i tip su obavezni'}), 400
+    with get_db() as conn:
+        try:
+            cur = conn.execute(
+                "INSERT INTO categories (name, type) VALUES (?,?)", (name, cat_type)
+            )
+            return jsonify({'ok': True, 'id': cur.lastrowid})
+        except sqlite3.IntegrityError:
+            return jsonify({'error': 'Kategorija već postoji'}), 409
+
+@app.route('/api/admin/categories/<int:cid>', methods=['DELETE'])
+def admin_delete_category(cid):
+    with get_db() as conn:
+        conn.execute("UPDATE categories SET active=0 WHERE id=?", (cid,))
+    return jsonify({'ok': True})
+
+@app.route('/api/admin/users', methods=['GET'])
+def admin_get_users():
+    with get_db() as conn:
+        rows = conn.execute(
+            "SELECT id, username, person_name, role, active, created_at FROM users ORDER BY created_at"
+        ).fetchall()
+    return jsonify([dict(r) for r in rows])
+
+@app.route('/api/admin/users', methods=['POST'])
+def admin_add_user():
+    d = request.json
+    username = (d.get('username') or '').strip()
+    password = d.get('password', '')
+    person_name = (d.get('person_name') or '').strip() or None
+    role = d.get('role', 'user')
+    if not username or not password:
+        return jsonify({'error': 'Korisničko ime i lozinka su obavezni'}), 400
+    if role not in ('admin', 'user'):
+        role = 'user'
+    with get_db() as conn:
+        try:
+            cur = conn.execute(
+                "INSERT INTO users (username, password_hash, person_name, role) VALUES (?,?,?,?)",
+                (username, generate_password_hash(password), person_name, role)
+            )
+            return jsonify({'ok': True, 'id': cur.lastrowid})
+        except sqlite3.IntegrityError:
+            return jsonify({'error': 'Korisničko ime već postoji'}), 409
+
+@app.route('/api/admin/users/<int:uid>', methods=['PATCH'])
+def admin_update_user(uid):
+    d = request.json
+    with get_db() as conn:
+        if d.get('password'):
+            conn.execute("UPDATE users SET password_hash=? WHERE id=?",
+                         (generate_password_hash(d['password']), uid))
+        if 'role' in d:
+            conn.execute("UPDATE users SET role=? WHERE id=?", (d['role'], uid))
+        if 'person_name' in d:
+            conn.execute("UPDATE users SET person_name=? WHERE id=?",
+                         ((d['person_name'] or '').strip() or None, uid))
+    return jsonify({'ok': True})
+
+@app.route('/api/admin/users/<int:uid>', methods=['DELETE'])
+def admin_delete_user(uid):
+    if uid == session.get('user_id'):
+        return jsonify({'error': 'Ne možeš obrisati sopstveni nalog'}), 400
+    with get_db() as conn:
+        conn.execute("UPDATE users SET active=0 WHERE id=?", (uid,))
+    return jsonify({'ok': True})
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
