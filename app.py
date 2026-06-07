@@ -478,7 +478,7 @@ def get_savings():
         pct = round(r['current_amount'] / r['target_amount'] * 100, 1) if r['target_amount'] > 0 else 0
         days_left = None
         if r['target_date']:
-            delta = _date.fromisoformat(r['target_date']) - _date.fromisoformat(today_iso)
+            delta = date.fromisoformat(r['target_date']) - date.fromisoformat(today_iso)
             days_left = delta.days
         r['progress_percent'] = min(pct, 100.0)
         r['days_left'] = days_left
