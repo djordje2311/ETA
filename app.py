@@ -63,6 +63,18 @@ def login():
 
 @app.route('/logout')
 def logout():
+    if session.get('is_demo'):
+        conn = sqlite3.connect(DEMO_DB)
+        conn.executescript('''
+            DELETE FROM transactions;
+            DELETE FROM savings;
+            DELETE FROM debts;
+            DELETE FROM budgets;
+            DELETE FROM planned;
+            DELETE FROM description_categories;
+        ''')
+        conn.commit()
+        conn.close()
     session.clear()
     return redirect(url_for('login'))
 
