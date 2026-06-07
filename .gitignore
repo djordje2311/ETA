@@ -1,4 +1,5 @@
 budzet.db
+demo.db
 __pycache__/
 *.pyc
 inspect_*.py

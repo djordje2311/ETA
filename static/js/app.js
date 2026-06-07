@@ -1243,6 +1243,7 @@ function renderAdminUsers(users) {
       <span style="font-size:12px;">${u.username}
         ${u.person_name ? `<span style="color:#4E8EA2;margin-left:4px;">(${u.person_name})</span>` : ''}
         <span style="color:#8FA3B8;margin-left:6px;">${u.role}</span>
+        ${u.is_demo ? `<span style="color:#fff;background:#4E8EA2;border-radius:4px;padding:1px 6px;font-size:10px;margin-left:4px;">demo</span>` : ''}
       </span>
       <button class="btn-small" style="color:#C0392B;border-color:#C0392B;" onclick="adminDeleteUser(${u.id})">✕</button>
     </div>`).join('');
@@ -1281,6 +1282,7 @@ if ($('adminUserForm')) {
       password:    $('adminUserPass').value,
       person_name: $('adminUserPerson').value.trim(),
       role:        $('adminUserRole').value,
+      is_demo:     $('adminUserDemo') ? $('adminUserDemo').checked : false,
     };
     if (!body.username || !body.password) { alert('Korisničko ime i lozinka su obavezni.'); return; }
     const res = await api('/api/admin/users', { method: 'POST', body: JSON.stringify(body) });
@@ -1288,6 +1290,7 @@ if ($('adminUserForm')) {
     $('adminUserName').value = '';
     $('adminUserPass').value = '';
     $('adminUserPerson').value = '';
+    if ($('adminUserDemo')) $('adminUserDemo').checked = false;
     loadAdmin();
   });
 }

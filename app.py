@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for, g
 from werkzeug.security import generate_password_hash, check_password_hash
 import sqlite3, os, re
 from datetime import datetime, date
@@ -9,7 +9,8 @@ import pdfplumber
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-only')
-DB = os.path.join(os.path.dirname(__file__), 'budzet.db')
+DB      = os.path.join(os.path.dirname(__file__), 'budzet.db')
+DEMO_DB = os.path.join(os.path.dirname(__file__), 'demo.db')
 
 APP_PASSWORD = os.environ.get('APP_PASSWORD')
 
@@ -23,6 +24,8 @@ def require_login():
         return redirect(url_for('login'))
     if request.path.startswith('/api/admin/') and session.get('role') != 'admin':
         return jsonify({'error': 'Forbidden'}), 403
+    if session.get('is_demo'):
+        g.db_path = DEMO_DB
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -43,6 +46,7 @@ def login():
                 session['username']    = user['username']
                 session['role']        = user['role']
                 session['person_name'] = user['person_name']
+                session['is_demo']     = bool(user['is_demo'])
                 return redirect(url_for('index'))
             error = 'Pogrešno korisničko ime ili lozinka.'
         else:
@@ -74,7 +78,8 @@ INCOME_CATEGORIES = [
 
 @contextmanager
 def get_db():
-    conn = sqlite3.connect(DB)
+    path = getattr(g, 'db_path', DB)
+    conn = sqlite3.connect(path)
     conn.row_factory = sqlite3.Row
     try:
         yield conn
@@ -167,8 +172,88 @@ def init_db():
                 ('Plata','income'),('Bonus','income'),('Poklon','income'),
                 ('Pozajmica','income'),('Drugo','income');
         ''')
+        try:
+            conn.execute("ALTER TABLE users ADD COLUMN is_demo INTEGER DEFAULT 0")
+        except sqlite3.OperationalError:
+            pass
+
+def init_demo_db():
+    conn = sqlite3.connect(DEMO_DB)
+    conn.row_factory = sqlite3.Row
+    conn.executescript('''
+        CREATE TABLE IF NOT EXISTS transactions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            date TEXT NOT NULL,
+            type TEXT NOT NULL CHECK(type IN ('income','expense')),
+            amount REAL NOT NULL,
+            category TEXT NOT NULL,
+            description TEXT,
+            person TEXT NOT NULL,
+            created_at TEXT DEFAULT (datetime('now'))
+        );
+        CREATE TABLE IF NOT EXISTS debts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            amount REAL NOT NULL,
+            paid REAL DEFAULT 0,
+            note TEXT,
+            direction TEXT DEFAULT 'owe' CHECK(direction IN ('owe','owed')),
+            created_at TEXT DEFAULT (datetime('now'))
+        );
+        CREATE TABLE IF NOT EXISTS budgets (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            category TEXT NOT NULL,
+            month TEXT NOT NULL,
+            limit_amount REAL NOT NULL,
+            UNIQUE(category, month)
+        );
+        CREATE TABLE IF NOT EXISTS description_categories (
+            description_prefix TEXT PRIMARY KEY,
+            category TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS planned (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            type TEXT NOT NULL CHECK(type IN ('income','expense')),
+            amount REAL NOT NULL,
+            category TEXT NOT NULL,
+            description TEXT,
+            person TEXT NOT NULL,
+            recurring INTEGER DEFAULT 0,
+            day_of_month INTEGER,
+            specific_date TEXT,
+            active INTEGER DEFAULT 1,
+            created_at TEXT DEFAULT (datetime('now'))
+        );
+        CREATE TABLE IF NOT EXISTS savings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            target_amount REAL NOT NULL,
+            current_amount REAL DEFAULT 0,
+            target_date TEXT,
+            person TEXT NOT NULL,
+            created_at TEXT DEFAULT (datetime('now'))
+        );
+        CREATE TABLE IF NOT EXISTS categories (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            type TEXT NOT NULL CHECK(type IN ('expense','income')),
+            active INTEGER DEFAULT 1,
+            UNIQUE(name, type)
+        );
+        INSERT OR IGNORE INTO categories (name, type) VALUES
+            ('Kirija','expense'),('Krediti','expense'),('Računi','expense'),
+            ('Hrana','expense'),('Gorivo','expense'),('Cigarete','expense'),
+            ('Telefon','expense'),('Pretplate','expense'),('Druženje','expense'),
+            ('Dostava','expense'),('Poklon','expense'),('Dugovi','expense'),
+            ('Putovanje','expense'),('Ostalo','expense'),
+            ('Plata','income'),('Bonus','income'),('Poklon','income'),
+            ('Pozajmica','income'),('Drugo','income');
+    ''')
+    conn.commit()
+    conn.close()
 
 init_db()
+init_demo_db()
 
 def _get_learned_category(description):
     with get_db() as conn:
@@ -1036,6 +1121,7 @@ def admin_add_user():
     password = d.get('password', '')
     person_name = (d.get('person_name') or '').strip() or None
     role = d.get('role', 'user')
+    is_demo = 1 if d.get('is_demo') else 0
     if not username or not password:
         return jsonify({'error': 'Korisničko ime i lozinka su obavezni'}), 400
     if role not in ('admin', 'user'):
@@ -1043,8 +1129,8 @@ def admin_add_user():
     with get_db() as conn:
         try:
             cur = conn.execute(
-                "INSERT INTO users (username, password_hash, person_name, role) VALUES (?,?,?,?)",
-                (username, generate_password_hash(password), person_name, role)
+                "INSERT INTO users (username, password_hash, person_name, role, is_demo) VALUES (?,?,?,?,?)",
+                (username, generate_password_hash(password), person_name, role, is_demo)
             )
             return jsonify({'ok': True, 'id': cur.lastrowid})
         except sqlite3.IntegrityError:
