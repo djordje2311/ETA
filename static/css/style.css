@@ -552,6 +552,16 @@ select:focus { border-color: var(--accent); }
 .form-input:focus { border-color: #0A4174; }
 .form-input::placeholder { color: var(--text3); }
 
+/* AI RESULT */
+.ai-result {
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: var(--text);
+}
+.ai-result strong { color: #0A4174; }
+.ai-result ul { margin: 8px 0 8px 18px; }
+.ai-result li { margin-bottom: 4px; }
+
 /* SCROLLBAR */
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }

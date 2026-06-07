@@ -56,6 +56,7 @@ function refreshPage(page) {
   if (page === 'budgets')      loadBudgets();
   if (page === 'savings')      loadSavings();
   if (page === 'admin')        loadAdmin();
+  if (page === 'ai')           initAI();
 }
 
 $('globalMonth').value = state.month;
@@ -1293,4 +1294,45 @@ if ($('adminUserForm')) {
     if ($('adminUserDemo')) $('adminUserDemo').checked = false;
     loadAdmin();
   });
+}
+
+// ── AI Analiza ─────────────────────────────────────────
+let _aiWired = false;
+function initAI() {
+  if (_aiWired) return;
+  _aiWired = true;
+  const btn = $('aiAnalyzeBtn');
+  if (btn) btn.addEventListener('click', runAIAnalysis);
+}
+
+function aiFormat(text) {
+  // Escape HTML, then apply light formatting: bold, bullets, line breaks.
+  const esc = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return esc
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/^\s*[-•]\s+(.*)$/gm, '<li>$1</li>')
+    .replace(/(<li>[\s\S]*?<\/li>)/g, '<ul style="margin:8px 0 8px 18px;">$1</ul>')
+    .replace(/\n/g, '<br>');
+}
+
+async function runAIAnalysis() {
+  const btn = $('aiAnalyzeBtn');
+  const out = $('aiResult');
+  if (!out) return;
+  const person = $('dashPerson') ? $('dashPerson').value : 'all';
+  if (btn) { btn.disabled = true; btn.textContent = 'Analiziram…'; }
+  out.innerHTML = '<p style="color:#8FA3B8;font-size:13px;">Analiziram tvoje finansije…</p>';
+  try {
+    const res = await api('/api/ai/analyze', {
+      method: 'POST',
+      body: JSON.stringify({ month: state.month, person }),
+    });
+    out.innerHTML = res.analysis
+      ? aiFormat(res.analysis)
+      : '<p style="color:#C0392B;font-size:13px;">Nije moguće dobiti analizu.</p>';
+  } catch (e) {
+    out.innerHTML = '<p style="color:#C0392B;font-size:13px;">Greška pri analizi. Pokušaj ponovo.</p>';
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '✨ Analiziraj'; }
+  }
 }

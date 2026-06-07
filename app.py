@@ -3,9 +3,10 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import sqlite3, os, re
 from datetime import datetime, date
 from io import BytesIO, StringIO
-import csv, calendar
+import csv, calendar, json
 from contextlib import contextmanager
 import pdfplumber
+import requests
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-only')
@@ -13,6 +14,10 @@ DB      = os.path.join(os.path.dirname(__file__), 'budzet.db')
 DEMO_DB = os.path.join(os.path.dirname(__file__), 'demo.db')
 
 APP_PASSWORD = os.environ.get('APP_PASSWORD')
+
+AI_PROVIDER = os.environ.get('AI_PROVIDER', 'anthropic')   # 'anthropic' | 'openai'
+AI_API_KEY  = os.environ.get('AI_API_KEY')
+AI_MODEL    = os.environ.get('AI_MODEL')
 
 @app.before_request
 def require_login():
@@ -373,12 +378,15 @@ def get_summary():
         rows = conn.execute(sql, args).fetchall()
 
         def _cur_bal(p=None):
-            s = ("SELECT SUM(CASE WHEN type='income' THEN amount ELSE -amount END) "
-                 "FROM transactions WHERE date <= ?")
-            a = [today_str]
             if p:
-                s += " AND person = ?"
-                a.append(p)
+                s = ("SELECT SUM((CASE WHEN type='income' THEN amount ELSE -amount END) "
+                     "* (CASE WHEN person='Oboje' THEN 0.5 ELSE 1 END)) "
+                     "FROM transactions WHERE date <= ? AND (person = ? OR person = 'Oboje')")
+                a = [today_str, p]
+            else:
+                s = ("SELECT SUM(CASE WHEN type='income' THEN amount ELSE -amount END) "
+                     "FROM transactions WHERE date <= ?")
+                a = [today_str]
             return round(conn.execute(s, a).fetchone()[0] or 0)
 
         current_balances = {
@@ -607,12 +615,15 @@ def get_calendar():
 
     with get_db() as conn:
         def _bal(person=None):
-            sql = ("SELECT SUM(CASE WHEN type='income' THEN amount ELSE -amount END) "
-                   "FROM transactions WHERE date <= ?")
-            args = [today_str]
             if person:
-                sql += " AND person = ?"
-                args.append(person)
+                sql = ("SELECT SUM((CASE WHEN type='income' THEN amount ELSE -amount END) "
+                       "* (CASE WHEN person='Oboje' THEN 0.5 ELSE 1 END)) "
+                       "FROM transactions WHERE date <= ? AND (person = ? OR person = 'Oboje')")
+                args = [today_str, person]
+            else:
+                sql = ("SELECT SUM(CASE WHEN type='income' THEN amount ELSE -amount END) "
+                       "FROM transactions WHERE date <= ?")
+                args = [today_str]
             return round(conn.execute(sql, args).fetchone()[0] or 0)
         cb_djordje = _bal('Đorđe')
         cb_milica  = _bal('Milica')
@@ -1172,6 +1183,150 @@ def admin_delete_user(uid):
     with get_db() as conn:
         conn.execute("UPDATE users SET active=0 WHERE id=?", (uid,))
     return jsonify({'ok': True})
+
+# ── AI Analytics ─────────────────────────────────────────────────────────────────
+
+def call_llm(system, user):
+    """Provider-agnostic LLM call. Returns text or a friendly error string."""
+    if not AI_API_KEY:
+        return None
+    try:
+        if AI_PROVIDER == 'openai':
+            model = AI_MODEL or 'gpt-4o-mini'
+            resp = requests.post(
+                'https://api.openai.com/v1/chat/completions',
+                headers={'Authorization': f'Bearer {AI_API_KEY}',
+                         'Content-Type': 'application/json'},
+                json={
+                    'model': model,
+                    'messages': [
+                        {'role': 'system', 'content': system},
+                        {'role': 'user',   'content': user},
+                    ],
+                    'max_tokens': 1200,
+                },
+                timeout=30,
+            )
+            resp.raise_for_status()
+            return resp.json()['choices'][0]['message']['content']
+        else:  # anthropic
+            model = AI_MODEL or 'claude-haiku-4-5-20251001'
+            resp = requests.post(
+                'https://api.anthropic.com/v1/messages',
+                headers={'x-api-key': AI_API_KEY,
+                         'anthropic-version': '2023-06-01',
+                         'Content-Type': 'application/json'},
+                json={
+                    'model': model,
+                    'max_tokens': 1200,
+                    'system': system,
+                    'messages': [{'role': 'user', 'content': user}],
+                },
+                timeout=30,
+            )
+            resp.raise_for_status()
+            return resp.json()['content'][0]['text']
+    except requests.exceptions.RequestException as e:
+        return f"__ERROR__ Greška pri pozivu AI servisa: {e}"
+
+
+def gather_ai_context(month, person):
+    """Collect a compact financial snapshot for the LLM prompt."""
+    date_from = f"{month}-01"
+    date_to   = date.today().isoformat()
+
+    with get_db() as conn:
+        sql  = "SELECT * FROM transactions WHERE date >= ? AND date <= ?"
+        args = [date_from, date_to]
+        if person != 'all':
+            sql += " AND (person = ? OR person = 'Oboje')"
+            args.append(person)
+        rows = conn.execute(sql, args).fetchall()
+
+        summary = {'Milica': {'income': 0, 'expense': 0},
+                   'Đorđe':  {'income': 0, 'expense': 0},
+                   'total':  {'income': 0, 'expense': 0}}
+        by_category = {}
+        for r in rows:
+            amt, p, t = r['amount'], r['person'], r['type']
+            if p == 'Oboje':
+                summary['Milica'][t] += amt / 2
+                summary['Đorđe'][t]  += amt / 2
+            elif p in summary:
+                summary[p][t] += amt
+            summary['total'][t] += amt
+            if t == 'expense':
+                by_category[r['category']] = by_category.get(r['category'], 0) + amt
+        for p in summary:
+            summary[p]['balance'] = round(summary[p]['income'] - summary[p]['expense'])
+            summary[p]['income']  = round(summary[p]['income'])
+            summary[p]['expense'] = round(summary[p]['expense'])
+
+        trend = conn.execute("""
+            SELECT strftime('%Y-%m', date) as month,
+                   SUM(CASE WHEN type='income' THEN amount ELSE 0 END) as income,
+                   SUM(CASE WHEN type='expense' THEN amount ELSE 0 END) as expense
+            FROM transactions GROUP BY month ORDER BY month DESC LIMIT 12
+        """).fetchall()
+
+        savings = conn.execute("SELECT name, target_amount, current_amount, target_date FROM savings").fetchall()
+        debts   = conn.execute("SELECT name, amount, paid, direction FROM debts").fetchall()
+        budgets = conn.execute("SELECT category, limit_amount, month FROM budgets WHERE month=?", (month,)).fetchall()
+
+        budget_list = []
+        for b in budgets:
+            spent = conn.execute(
+                "SELECT SUM(amount) FROM transactions WHERE type='expense' AND category=? AND strftime('%Y-%m',date)=?",
+                (b['category'], month)
+            ).fetchone()[0] or 0
+            budget_list.append({'category': b['category'], 'limit': b['limit_amount'], 'spent': round(spent)})
+
+    return {
+        'mesec': month,
+        'osoba': person,
+        'pregled': {k: {kk: round(vv) for kk, vv in v.items()} for k, v in summary.items()},
+        'po_kategoriji': {k: round(v) for k, v in by_category.items()},
+        'trend_12m': [dict(r) for r in trend][::-1],
+        'stednja': [dict(r) for r in savings],
+        'dugovi': [dict(r) for r in debts],
+        'budzeti': budget_list,
+    }
+
+
+@app.route('/api/ai/analyze', methods=['POST'])
+def ai_analyze():
+    if session.get('is_demo'):
+        return jsonify({'analysis': 'AI analiza nije dostupna u demo režimu.'})
+    if not AI_API_KEY:
+        return jsonify({'analysis': 'AI nije konfigurisan. Postavi AI_API_KEY na serveru.'})
+
+    d = request.json or {}
+    month  = d.get('month')  or datetime.now().strftime('%Y-%m')
+    person = d.get('person') or 'all'
+
+    context = gather_ai_context(month, person)
+
+    system = (
+        "Ti si lični finansijski savetnik za jedno domaćinstvo (Đorđe i Milica) u Srbiji. "
+        "Analiziraš mesečne podatke o prihodima, rashodima, štednji, dugovima i budžetima. "
+        "Iznosi su u dinarima (RSD). 'Oboje' znači zajednički trošak/prihod podeljen 50/50. "
+        "Odgovori kratko i jasno na srpskom jeziku, koristi sledeću strukturu:\n"
+        "1. Kratak pregled meseca (2-3 rečenice)\n"
+        "2. Uočeni obrasci potrošnje\n"
+        "3. Upozorenja (ako postoje — npr. prekoračen budžet, veliki rast troškova)\n"
+        "4. 2-3 konkretne preporuke\n"
+        "Budi koristan i konkretan, oslanjaj se isključivo na date podatke."
+    )
+    user = "Evo finansijskih podataka domaćinstva u JSON formatu:\n\n" + \
+           json.dumps(context, ensure_ascii=False, indent=2)
+
+    result = call_llm(system, user)
+    if result is None:
+        return jsonify({'analysis': 'AI nije konfigurisan. Postavi AI_API_KEY na serveru.'})
+    if result.startswith('__ERROR__'):
+        return jsonify({'analysis': result.replace('__ERROR__', '').strip()}), 502
+    return jsonify({'analysis': result})
+
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

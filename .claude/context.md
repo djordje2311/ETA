@@ -90,3 +90,22 @@
 ## Summary Person Filter Fix
 - `/api/summary` sada uključuje 'Oboje' transakcije pri filtriranju po osobi
 - SQL: `AND (person = ? OR person = 'Oboje')` — isti pattern kao u `/api/transactions`
+
+## Oboje Balance Fix
+- Per-person current balance sada uključuje 50% 'Oboje' transakcija
+- Popravljeno na 2 mesta: `_cur_bal` (get_summary) i `_bal` (get_calendar)
+- Pre toga: Đorđe balance + Milica balance ≠ total (Oboje je bio izostavljen)
+- Pravilo: 'Oboje' = zajednički, svako dobija 50% u agregatima/balansima
+- Lista transakcija i dalje prikazuje 'Oboje' u punom iznosu (stvarni zapis)
+
+## AI Analiza
+- Tab "AI Analiza" — dugme "Analiziraj" šalje finansije LLM-u, vraća uvide
+- Provider-agnostic: `call_llm()` podržava Anthropic i OpenAI preko REST-a
+- Env varijable: `AI_PROVIDER` (anthropic/openai), `AI_API_KEY`, `AI_MODEL`
+- Default modeli: Anthropic `claude-haiku-4-5-20251001`, OpenAI `gpt-4o-mini`
+- `gather_ai_context(month, person)` — skuplja pregled, kategorije, 12m trend, štednju, dugove, budžete
+- Endpoint: `POST /api/ai/analyze` — preskače demo korisnike (bez troška), gracefully handluje nedostatak ključa
+- Poziva se samo na klik dugmeta (kontrola troška), ne na otvaranje taba
+- Zavisnost: `requests` (dodato u requirements.txt)
+- **Hosting**: zahteva PythonAnywhere Hacker plan ($5/mo) za outbound pristup
+- **Trošak**: API je pay-as-you-go (Claude Pro NE pokriva API), ~<1 cent po analizi sa Haiku

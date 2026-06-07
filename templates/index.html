@@ -43,6 +43,9 @@
       <a class="nav-item" data-page="savings">
         <span class="nav-icon">◑</span> Štednja
       </a>
+      <a class="nav-item" data-page="ai">
+        <span class="nav-icon">✨</span> AI Analiza
+      </a>
       {% if is_admin %}
       <a class="nav-item" data-page="admin">
         <span class="nav-icon">⚙</span> Admin
@@ -273,6 +276,20 @@
         <button class="btn-primary" id="openAddBudget">+ Postavi budžet</button>
       </div>
       <div id="budgetList"></div>
+    </div>
+
+    <!-- AI PAGE -->
+    <div id="page-ai" class="page">
+      <div class="page-header">
+        <h1>AI Analiza</h1>
+        <button class="btn-primary" id="aiAnalyzeBtn">✨ Analiziraj</button>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><span>Uvidi i preporuke</span></div>
+        <div id="aiResult" class="ai-result">
+          <p style="color:#8FA3B8;font-size:13px;">Klikni "Analiziraj" da AI pregleda tvoje finansije za izabrani mesec i da uvide i preporuke.</p>
+        </div>
+      </div>
     </div>
 
     {% if is_admin %}
